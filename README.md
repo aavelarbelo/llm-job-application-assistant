@@ -24,17 +24,16 @@ flowchart TB
         MP[Master profile<br/>single source of truth] --> LLM[LLM + project<br/>instructions]
         JOB[Job posting] --> LLM
         LLM --> FIT{Fit assessment<br/>0–10 + discard rules}
+        FIT -- low fit --> L1[(Log: not applied)]
     end
-    subgraph S2[" 2 · Drafting and approval "]
+    subgraph S2[" 2 · Drafting and approval (good fit only) "]
         direction LR
         CV[CV generator<br/>DOCX → PDF<br/>1-page check] --> AG[Browser agent<br/>pre-fills the form]
         AG --> HU{Human review}
-        HU -- approve --> SUB[Manual submission]
+        HU -- approve --> SUB[Manual submission] --> L2[(Log: submitted)]
+        HU -- reject --> L3[(Log: rejected)]
     end
-    FIT -- good fit --> CV
-    FIT -- low fit --> LOG[(Application log)]
-    HU -- reject --> LOG
-    SUB --> LOG
+    S1 -- good fit --> S2
 ```
 
 | Component | What it does | Where |
@@ -86,11 +85,11 @@ flowchart TB
         direction LR
         C[Claude API<br/>JSON output] --> I[Parse response] --> S{score ≥ 60?}
         S -- yes --> AP[Email approval<br/>send-and-wait · 3 days] --> Q{Approved?}
+        Q -- yes --> G1[(Sheets: approved)]
+        Q -- no --> G2[(Sheets: rejected)]
+        S -- no --> G3[(Sheets: low fit)]
     end
-    R --> C
-    Q -- yes --> G1[(Sheets: approved)]
-    Q -- no --> G2[(Sheets: rejected)]
-    S -- no --> G3[(Sheets: low fit)]
+    A -- jobs that pass the filter --> B
 ```
 
 Key choices: a free rule-based filter (seniority level, title, "3+ years") before the LLM;

@@ -23,11 +23,11 @@ flowchart TB
         direction LR
         C[Claude API<br/>JSON output] --> I[Parse response] --> S{score ≥ 60?}
         S -- yes --> AP[Email approval<br/>send-and-wait · 3 days] --> Q{Approved?}
+        Q -- yes --> G1[(Sheets: approved)]
+        Q -- no --> G2[(Sheets: rejected)]
+        S -- no --> G3[(Sheets: low fit)]
     end
-    R --> C
-    Q -- yes --> G1[(Sheets: approved)]
-    Q -- no --> G2[(Sheets: rejected)]
-    S -- no --> G3[(Sheets: low fit)]
+    A -- jobs that pass the filter --> B
 ```
 
 | # | Node (in the JSON) | What it does |
