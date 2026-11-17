@@ -12,12 +12,19 @@ and prompt text are in Portuguese, the language I built it in.
 ## Flow (14 nodes)
 
 ```mermaid
-flowchart LR
-    T[Gmail trigger<br/>job-alert label] --> X[Extract job IDs<br/>JS] --> D[Deduplicate]
-    D --> F[Fetch public<br/>job page] --> P[Build prompt<br/>cached fixed part]
-    P --> R[Rule-based filter<br/>free · max 15/run] --> C[Claude API<br/>JSON output]
-    C --> I[Parse response] --> S{score ≥ 60?}
-    S -- yes --> A[Email approval<br/>send-and-wait · 3 days] --> Q{Approved?}
+flowchart TB
+    subgraph A[" 1 · Collect and filter (no LLM cost) "]
+        direction LR
+        T[Gmail trigger<br/>job-alert label] --> X[Extract job IDs<br/>JS] --> D[Deduplicate]
+        D --> F[Fetch public<br/>job page] --> P[Build prompt<br/>cached fixed part]
+        P --> R[Rule-based filter<br/>max 15/run]
+    end
+    subgraph B[" 2 · Evaluate and approve "]
+        direction LR
+        C[Claude API<br/>JSON output] --> I[Parse response] --> S{score ≥ 60?}
+        S -- yes --> AP[Email approval<br/>send-and-wait · 3 days] --> Q{Approved?}
+    end
+    R --> C
     Q -- yes --> G1[(Sheets: approved)]
     Q -- no --> G2[(Sheets: rejected)]
     S -- no --> G3[(Sheets: low fit)]

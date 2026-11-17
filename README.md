@@ -18,15 +18,21 @@ up and misread profiles, and they do it confidently. I wanted the speed without 
 ## Architecture
 
 ```mermaid
-flowchart LR
-    MP[Master profile<br/>single source of truth] --> LLM[LLM + project instructions]
-    JOB[Job posting] --> LLM
-    LLM --> FIT{Fit assessment<br/>0–10 + discard rules}
+flowchart TB
+    subgraph S1[" 1 · Screening "]
+        direction LR
+        MP[Master profile<br/>single source of truth] --> LLM[LLM + project<br/>instructions]
+        JOB[Job posting] --> LLM
+        LLM --> FIT{Fit assessment<br/>0–10 + discard rules}
+    end
+    subgraph S2[" 2 · Drafting and approval "]
+        direction LR
+        CV[CV generator<br/>DOCX → PDF<br/>1-page check] --> AG[Browser agent<br/>pre-fills the form]
+        AG --> HU{Human review}
+        HU -- approve --> SUB[Manual submission]
+    end
+    FIT -- good fit --> CV
     FIT -- low fit --> LOG[(Application log)]
-    FIT -- good fit --> CV[CV generator<br/>DOCX → PDF → 1-page check]
-    CV --> AG[Browser agent<br/>pre-fills the form]
-    AG --> HU{Human review}
-    HU -- approve --> SUB[Manual submission]
     HU -- reject --> LOG
     SUB --> LOG
 ```
@@ -69,12 +75,19 @@ run, before the rule-based filter was added. That is why the filter's connection
 version). Details in [`n8n/README.md`](n8n/README.md).
 
 ```mermaid
-flowchart LR
-    T[Gmail trigger<br/>job-alert label] --> X[Extract job IDs<br/>JS] --> D[Deduplicate]
-    D --> F[Fetch public<br/>job page] --> P[Build prompt<br/>cached fixed part]
-    P --> R[Rule-based filter<br/>free · max 15/run] --> C[Claude API<br/>JSON output]
-    C --> I[Parse response] --> S{score ≥ 60?}
-    S -- yes --> A[Email approval<br/>send-and-wait · 3 days] --> Q{Approved?}
+flowchart TB
+    subgraph A[" 1 · Collect and filter (no LLM cost) "]
+        direction LR
+        T[Gmail trigger<br/>job-alert label] --> X[Extract job IDs<br/>JS] --> D[Deduplicate]
+        D --> F[Fetch public<br/>job page] --> P[Build prompt<br/>cached fixed part]
+        P --> R[Rule-based filter<br/>max 15/run]
+    end
+    subgraph B[" 2 · Evaluate and approve "]
+        direction LR
+        C[Claude API<br/>JSON output] --> I[Parse response] --> S{score ≥ 60?}
+        S -- yes --> AP[Email approval<br/>send-and-wait · 3 days] --> Q{Approved?}
+    end
+    R --> C
     Q -- yes --> G1[(Sheets: approved)]
     Q -- no --> G2[(Sheets: rejected)]
     S -- no --> G3[(Sheets: low fit)]
