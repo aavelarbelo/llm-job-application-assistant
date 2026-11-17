@@ -1,0 +1,21 @@
+{
+  "variant": "data-analyst",
+  "target_title": "Data Analyst",
+  "keywords": ["SQL", "Python", "Power BI", "Excel", "KPI reporting", "data quality"],
+  "section_order": ["summary", "experience", "projects", "skills", "education", "languages"],
+  "summary": ["SUM-01", "SUM-03", "SUM-02"],
+  "experience": {
+    "EXP-02": ["F-111", "F-112"],
+    "EXP-01": ["F-101", "F-103", "F-102"]
+  },
+  "projects": {
+    "PRJ-01": ["F-203", "F-201", "F-202"],
+    "PRJ-02": ["F-212", "F-211"]
+  },
+  "skills": ["SK-02", "SK-01", "SK-03", "SK-06"],
+  "education": {
+    "EDU-01": ["F-301"],
+    "EDU-02": []
+  },
+  "languages": ["LANG-01", "LANG-02"]
+}

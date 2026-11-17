@@ -1,0 +1,21 @@
+{
+  "variant": "data-engineer",
+  "target_title": "Junior Data Engineer",
+  "keywords": ["Python", "SQL", "PostgreSQL", "ETL", "data quality", "Docker", "Git", "Airflow"],
+  "section_order": ["summary", "skills", "projects", "experience", "education", "languages"],
+  "summary": ["SUM-01", "SUM-02", "SUM-04"],
+  "skills": ["SK-01", "SK-03", "SK-05", "SK-04", "SK-02"],
+  "projects": {
+    "PRJ-01": ["F-201", "F-202", "F-203"],
+    "PRJ-02": ["F-211", "F-212"]
+  },
+  "experience": {
+    "EXP-02": ["F-111"],
+    "EXP-01": ["F-103", "F-101"]
+  },
+  "education": {
+    "EDU-01": ["F-301"],
+    "EDU-02": []
+  },
+  "languages": ["LANG-01", "LANG-02"]
+}

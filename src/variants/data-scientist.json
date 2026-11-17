@@ -1,0 +1,22 @@
+{
+  "variant": "data-scientist",
+  "target_title": "Junior Data Scientist",
+  "keywords": ["Python", "pandas", "SQL", "statistics", "data cleaning", "Jupyter"],
+  "section_order": ["summary", "skills", "projects", "education", "experience", "languages"],
+  "summary": ["SUM-01", "SUM-02"],
+  "skills": ["SK-01", "SK-06", "SK-03", "SK-02", "SK-04"],
+  "projects": {
+    "PRJ-02": ["F-211", "F-212"],
+    "PRJ-01": ["F-202", "F-201", "F-203"]
+  },
+  "education": {
+    "EDU-01": ["F-301"],
+    "EDU-03": ["F-311"],
+    "EDU-02": []
+  },
+  "experience": {
+    "EXP-02": ["F-111"],
+    "EXP-01": ["F-101", "F-103"]
+  },
+  "languages": ["LANG-01", "LANG-02"]
+}
