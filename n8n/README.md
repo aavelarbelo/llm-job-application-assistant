@@ -1,7 +1,7 @@
 # n8n workflow: job-alert screening with Claude
 
 **Status:** prototype. The screening part (rule-based filter and Claude evaluation) was tested
-manually; the approval branch and the approved/rejected logging were not. **Not active in
+manually; the approval branch and the three Google Sheets logging nodes were not. **Not active in
 production** (n8n Cloud, trial version). Applications are always submitted manually; the workflow only screens and drafts.
 
 File: [`workflow_candidaturas_SANITIZADO.json`](workflow_candidaturas_SANITIZADO.json)
@@ -50,7 +50,8 @@ flowchart TB
 
 - **Cheap filter before the LLM.** Obvious mismatches (seniority, years required) are discarded
   with regular expressions, at no cost, before any API call.
-- **Prompt caching** (its effect on cost has not been measured separately). The profile and
+- **Prompt caching** (added in v2 of the prompt node; the run 1 cost below was measured
+  without caching, and the effect of caching has not been measured separately). The profile and
   rules are identical for every job, so they go in the cached `system` block; only the job
   description changes between calls.
 - **Structured output.** The model must answer with a fixed JSON schema, so the next nodes can
@@ -65,7 +66,7 @@ Two separate manual test runs:
 | Run | What was tested | Result |
 |---|---|---|
 | 1 | Claude evaluation, **before** the rule-based filter existed | 6 jobs were sent to the LLM and all 6 were rejected, matching my own assessment. All six were poor fits, so this run does not show how it scores a good fit. Cost: US$0.254 in total, ≈ **US$0.042 per job evaluated by Claude**. |
-| 2 | Rule-based filter, on its own | Discarded 5 of 6 jobs before any LLM call. |
+| 2 | Rule-based filter, on its own (on the same six postings) | Discarded 5 of 6 jobs before any LLM call. |
 
 The screenshot is from run 1. The item counts on the canvas come from that run, which is why
 the filter's connections (added afterwards) show no counts.
@@ -83,12 +84,12 @@ to end.
 - **API failures can lose jobs:** a failed call or malformed JSON gives `score: 0`, which is
   logged as "low fit", so a technical error looks the same as a weak match. Because of the
   deduplication node, that job will not be retried.
-- **Untested branch:** the approved/rejected logging nodes are connected but have never been
-  tested, and their sheet ID is not set.
+- **Untested logging:** none of the three Google Sheets logging nodes (approved / rejected /
+  low fit) has been tested; the approved and rejected nodes also have no sheet ID set.
 
 ## Next steps (not done yet)
 
-- [ ] Test the approved/rejected logging branch and set its sheet ID
+- [ ] Test the three logging nodes and set the sheet ID in the approved/rejected ones
 - [ ] Daily trigger
 - [ ] Approval via Telegram
 - [ ] Cheaper model for screening

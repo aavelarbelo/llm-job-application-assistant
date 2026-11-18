@@ -72,7 +72,7 @@ flowchart TB
 run, before the rule-based filter was added. That is why the filter's connections show no counts.*
 
 **Status:** prototype. The screening part (rule-based filter and Claude evaluation) was tested
-manually; the approval branch and the approved/rejected logging were not. **Not active in production** (n8n Cloud, trial
+manually; the approval branch and the three Google Sheets logging nodes were not. **Not active in production** (n8n Cloud, trial
 version). Details in [`n8n/README.md`](n8n/README.md).
 
 ```mermaid
@@ -95,7 +95,7 @@ flowchart TB
 ```
 
 Key choices: a free rule-based filter (seniority level, title, "3+ years") before the LLM;
-prompt caching for the fixed part (profile + rules; its effect on cost has not been measured separately); structured JSON output (score 0–100, met
+prompt caching for the fixed part (profile + rules; the run 1 cost below was measured without caching, and its effect has not been measured separately); structured JSON output (score 0–100, met
 requirements, gaps, CV, cover letter); and a human approval step on every candidate job.
 
 ### What has been measured
@@ -105,7 +105,7 @@ Two separate manual test runs:
 | Run | What was tested | Result |
 |---|---|---|
 | 1 | Claude evaluation, **before** the rule-based filter existed | 6 jobs were sent to the LLM and all 6 were rejected, matching my own assessment. All six were poor fits, so this run does not show how it scores a good fit. Cost: US$0.254 in total, ≈ **US$0.042 per job evaluated by Claude**. |
-| 2 | Rule-based filter, on its own | Discarded 5 of 6 jobs before any LLM call. |
+| 2 | Rule-based filter, on its own (on the same six postings) | Discarded 5 of 6 jobs before any LLM call. |
 
 These are small functional tests, not a benchmark. The full pipeline (filter + LLM + approval
 + logging) has not been tested end to end.
@@ -120,8 +120,8 @@ These are small functional tests, not a benchmark. The full pipeline (filter + L
 - **Fragile node linking.** Nodes are matched by item index. A `jobId` key would be more robust.
 - **Silent failures.** If the API call fails or returns malformed JSON, the job gets a score of
   0 and is logged as "low fit", so a technical error looks the same as a weak match.
-- **Untested branch.** The approved/rejected logging nodes are connected but have never been
-  tested, and their Google Sheets ID is not set.
+- **Untested logging.** None of the three Google Sheets logging nodes (approved / rejected /
+  low fit) has been tested; the approved and rejected nodes also have no sheet ID set.
 - **The fit score is an LLM judgment**, not a calibrated metric.
 - **Agent guardrails are prompt-based.** The browser agents' stop points can't be enforced in
   code, which is why a human approves every step and submits manually.
@@ -143,7 +143,7 @@ Real errors I ran into while using it, and the rule each one led to:
 
 ## Next steps (n8n)
 
-- Test the approved/rejected logging branch and set its sheet ID
+- Test the three logging nodes and set the sheet ID in the approved/rejected ones
 - Daily trigger
 - Approval via Telegram
 - Cheaper model for screening
