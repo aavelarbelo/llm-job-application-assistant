@@ -13,10 +13,9 @@ source, or check it in code.
 
 ## 1. Unverified numbers in older CV versions
 
-**What happened.** Some of my older CVs and texts contained numbers I could not back up with
-any document: page counts and record totals from a group project, and a percentage attributed
-to a previous role. The project used those older CVs as templates for format and wording, so
-the numbers were within the model's reach. The unverified numbers came from older CV versions
+**What happened.** Older versions of my CV and related texts contained numbers I could not
+back up with any document: page counts and record totals from a group project, and a
+percentage attributed to a previous role. The unverified numbers came from older CV versions
 used as templates; the forbidden-facts list was created so they could never reappear.
 
 **Why it matters.** A number in a CV is a claim that can be questioned in an interview. If

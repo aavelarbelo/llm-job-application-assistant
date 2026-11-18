@@ -1,6 +1,6 @@
 # Prompts
 
-The three prompts the system actually runs on, **translated from Portuguese and anonymised**.
+Translated and anonymised versions of the three prompts I use (originals in Portuguese).
 
 | File | Used in | What it does |
 |---|---|---|

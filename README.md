@@ -5,8 +5,9 @@ It uses an LLM (Claude) to screen job postings against a **verified profile**, d
 one-page CVs and recruiter messages, and pre-fill application forms. A human (me) reviews
 every output, and **every application is submitted manually**.
 
-> All data in this repository is fictional ("Jane Doe"). No personal data, recruiter names or
-> companies are published. The only results reported are the ones in
+> The example profile and sample files use a fictional person ("Jane Doe"). The prompts,
+> workflow and measurements come from my own use, with personal data removed; my name appears
+> only as author. No recruiter names or companies are published. The only results reported are the ones in
 > [What has been measured](#what-has-been-measured).
 
 ## The problem
@@ -39,9 +40,9 @@ flowchart TB
 | Component | What it does | Where |
 |---|---|---|
 | Master profile | One Markdown file with every verified fact about my background and its source. It also has a list of **forbidden facts** (unproven numbers and claims) and **[TO CONFIRM]** facts that cannot be used yet. | [`knowledge-base/`](knowledge-base/) (example) |
-| Project instructions | A fixed flow: read the posting → score fit (0–10) with hard discard rules (years of experience, required stack, language, location) → ATS-friendly 1-page CV → recruiter message → likely interview questions. | [`prompts/`](prompts/) |
-| Anti-hallucination rules | Only master-profile facts. Pre-validated sentences per project. Automatic 1-page check. File metadata. | [`prompts/`](prompts/), [`src/`](src/) |
-| CV generator | Builds the CV from 3 base variants (Data Engineer / Analyst / Scientist) with `python-docx`, converts it to PDF with LibreOffice and checks the page count with `pypdf`. Refuses any fact that is not verified. | [`src/`](src/) |
+| Project instructions | A fixed flow: read the posting → score fit (0–10 in the Claude project, 0–100 in the n8n workflow) with hard discard rules (years of experience, required stack, language, location) → ATS-friendly 1-page CV → recruiter message → likely interview questions. | [`prompts/`](prompts/) |
+| Rules to limit invented facts | Only master-profile facts. Pre-validated sentences per project. Automatic 1-page check. File metadata. | [`prompts/`](prompts/), [`src/`](src/) |
+| CV generator | Builds the CV from 3 base variants (Data Engineer / Analyst / Scientist) with `python-docx`, converts it to PDF with LibreOffice and checks the page count with `pypdf`. Rejects any fact not marked as verified in the master profile (CV generator only; drafts from the Claude project are not checked in code). | [`src/`](src/) |
 | Screening agent | Claude in Chrome goes through a LinkedIn results page **read-only** and returns a ranked shortlist. | [`prompts/job-screening-prompt.md`](prompts/job-screening-prompt.md) |
 | Form-filling agent | Claude in Chrome fills application forms, but **stops** at login/password, at CV upload and before submit, then shows a summary for approval. | [`prompts/form-filling-agent-prompt.md`](prompts/form-filling-agent-prompt.md) |
 | Tracking | One sheet per application plus an index, and a reusable answers sheet for common form questions. | [`tracking/`](tracking/) (templates) |
@@ -57,8 +58,8 @@ flowchart TB
   still to confirm, unsourced, or moved under the wrong entry (e.g. an academic project bullet
   listed under a job). It then scans the final text for forbidden patterns and fails if the
   PDF is longer than one page.
-- **Human-in-the-loop by default.** The system drafts and pre-fills. It never logs in, uploads
-  or submits.
+- **Human-in-the-loop by default.** The system drafts and pre-fills. By design, it stops before
+  logging in, uploading or submitting. This is enforced by prompt instructions, not by code.
 - **Explicit guardrails for agents.** The browser agents have hard stop points and a list of
   forbidden actions instead of "be careful" instructions.
 - **Cheap before expensive** (n8n). Rule-based filtering runs before any LLM call.
@@ -70,7 +71,8 @@ flowchart TB
 *The item counts on the canvas (e.g. "6 items" after the Claude node) are from the first test
 run, before the rule-based filter was added. That is why the filter's connections show no counts.*
 
-**Status:** working prototype, tested manually. **Not active in production** (n8n Cloud, trial
+**Status:** prototype. The screening part (rule-based filter and Claude evaluation) was tested
+manually; the approval branch and the approved/rejected logging were not. **Not active in production** (n8n Cloud, trial
 version). Details in [`n8n/README.md`](n8n/README.md).
 
 ```mermaid
@@ -93,7 +95,7 @@ flowchart TB
 ```
 
 Key choices: a free rule-based filter (seniority level, title, "3+ years") before the LLM;
-prompt caching for the fixed part (profile + rules); structured JSON output (score 0–100, met
+prompt caching for the fixed part (profile + rules; its effect on cost has not been measured separately); structured JSON output (score 0–100, met
 requirements, gaps, CV, cover letter); and a human approval step on every candidate job.
 
 ### What has been measured
@@ -102,7 +104,7 @@ Two separate manual test runs:
 
 | Run | What was tested | Result |
 |---|---|---|
-| 1 | Claude evaluation, **before** the rule-based filter existed | 6 jobs sent to the LLM; all 6 rejected, which matched my own manual assessment. Cost: US$0.254 in total, ≈ **US$0.042 per job evaluated by Claude**. |
+| 1 | Claude evaluation, **before** the rule-based filter existed | 6 jobs were sent to the LLM and all 6 were rejected, matching my own assessment. All six were poor fits, so this run does not show how it scores a good fit. Cost: US$0.254 in total, ≈ **US$0.042 per job evaluated by Claude**. |
 | 2 | Rule-based filter, on its own | Discarded 5 of 6 jobs before any LLM call. |
 
 These are small functional tests, not a benchmark. The full pipeline (filter + LLM + approval
@@ -112,8 +114,9 @@ These are small functional tests, not a benchmark. The full pipeline (filter + L
 
 - **Small scale, personal use.** The n8n workflow is not in production and has only been tested
   on a handful of postings.
-- **Data source.** It reads public LinkedIn job pages, which is only acceptable for personal,
-  low-volume use. A production version would use an official source.
+- **Data source.** It reads public LinkedIn job pages without the official API. This may
+  conflict with LinkedIn's terms; I use it only for personal, low-volume testing, and a
+  production version would need an official source.
 - **Fragile node linking.** Nodes are matched by item index. A `jobId` key would be more robust.
 - **Silent failures.** If the API call fails or returns malformed JSON, the job gets a score of
   0 and is logged as "low fit", so a technical error looks the same as a weak match.
@@ -135,7 +138,7 @@ These are small functional tests, not a benchmark. The full pipeline (filter + L
 - Many real application forms break LLM-generated text (character limits, numeric-only fields,
   special characters), so outputs must be adapted to the target system, not just generated.
 
-Real errors the system caught, and the rule each one led to:
+Real errors I ran into while using it, and the rule each one led to:
 [`docs/lessons-learned.md`](docs/lessons-learned.md).
 
 ## Next steps (n8n)

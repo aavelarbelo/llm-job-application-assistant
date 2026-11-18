@@ -1,7 +1,8 @@
 # n8n workflow: job-alert screening with Claude
 
-**Status:** working prototype, tested manually. **Not active in production** (n8n Cloud, trial
-version). Applications are always submitted manually; the workflow only screens and drafts.
+**Status:** prototype. The screening part (rule-based filter and Claude evaluation) was tested
+manually; the approval branch and the approved/rejected logging were not. **Not active in
+production** (n8n Cloud, trial version). Applications are always submitted manually; the workflow only screens and drafts.
 
 File: [`workflow_candidaturas_SANITIZADO.json`](workflow_candidaturas_SANITIZADO.json)
 (sanitised: no credentials; the profile and rules inside the prompt were removed). Node names
@@ -49,8 +50,9 @@ flowchart TB
 
 - **Cheap filter before the LLM.** Obvious mismatches (seniority, years required) are discarded
   with regular expressions, at no cost, before any API call.
-- **Prompt caching.** The profile and rules are identical for every job, so they go in the
-  cached `system` block; only the job description changes between calls.
+- **Prompt caching** (its effect on cost has not been measured separately). The profile and
+  rules are identical for every job, so they go in the cached `system` block; only the job
+  description changes between calls.
 - **Structured output.** The model must answer with a fixed JSON schema, so the next nodes can
   branch on `score` and fill the email and the sheet without parsing free text.
 - **A human always approves.** A high score only triggers an approval email; the application
@@ -62,7 +64,7 @@ Two separate manual test runs:
 
 | Run | What was tested | Result |
 |---|---|---|
-| 1 | Claude evaluation, **before** the rule-based filter existed | 6 jobs sent to the LLM; all 6 rejected, which matched my own manual assessment. Cost: US$0.254 in total, ≈ **US$0.042 per job evaluated by Claude**. |
+| 1 | Claude evaluation, **before** the rule-based filter existed | 6 jobs were sent to the LLM and all 6 were rejected, matching my own assessment. All six were poor fits, so this run does not show how it scores a good fit. Cost: US$0.254 in total, ≈ **US$0.042 per job evaluated by Claude**. |
 | 2 | Rule-based filter, on its own | Discarded 5 of 6 jobs before any LLM call. |
 
 The screenshot is from run 1. The item counts on the canvas come from that run, which is why
@@ -73,8 +75,9 @@ to end.
 
 ## Limitations
 
-- **Data source:** it reads public LinkedIn job pages. This is only acceptable for personal,
-  low-volume use; a production version would use an official source.
+- **Data source:** it reads public LinkedIn job pages without the official API. This may
+  conflict with LinkedIn's terms; I use it only for personal, low-volume testing, and a
+  production version would need an official source.
 - **Index-based linking:** several nodes match items by position (`vagas[i]`). If a node drops
   or reorders items, data can be matched to the wrong job. Improvement: join on `jobId`.
 - **API failures can lose jobs:** a failed call or malformed JSON gives `score: 0`, which is
