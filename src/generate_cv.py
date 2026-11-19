@@ -9,7 +9,7 @@ The point of this script is that **only verified facts can reach the CV**:
      The variant contains no free text, only IDs.
   3. Validation fails if a variant uses an ID that is unknown, forbidden or still to confirm,
      or if a verified fact has no source.
-  4. The final text is scanned for the FORBIDDEN patterns (e.g. an unproven "30%").
+  4. The final text is scanned for the FORBIDDEN patterns (e.g. an unproven percentage).
   5. The CV is written with python-docx, converted to PDF with LibreOffice and must be exactly
      1 page (checked with pypdf).
 
@@ -44,11 +44,11 @@ from pypdf import PdfReader
 
 # "- **F-101** Some fact text — _source: reference letter_"
 FACT_RE = re.compile(r"^- \*\*([A-Z]+-\d+)\*\*\s+(.*)$")
-# "#### EXP-01 | Sales Analyst | Acme Components Lda. | Jan 2019 – Mar 2023"
+# "#### EXP-02 | Research Fellow (SPINMESH project) | INEGI, Porto | Jul 2021 – Dec 2021"
 ENTRY_RE = re.compile(r"^#### ([A-Z]+-\d+)\s*\|(.*)$")
 # The source is written at the end of a fact, after an em dash.
 SOURCE_RE = re.compile(r"\s+—\s+_source:\s*(.*?)_\s*$")
-# Forbidden patterns are written in backticks: Patterns: `30%`, `AWS`
+# Forbidden patterns are written in backticks: Patterns: `Tableau`, `Azure`
 PATTERN_RE = re.compile(r"`([^`]+)`")
 
 

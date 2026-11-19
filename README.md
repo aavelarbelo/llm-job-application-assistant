@@ -1,13 +1,15 @@
 # LLM Job Application Assistant
 
-A personal, human-in-the-loop system I built to support my own job search for data roles.
+**Author:** Andressa Avelar Belo · [LinkedIn](https://www.linkedin.com/in/andressaavelar) · [GitHub](https://github.com/aavelarbelo)
+
+A personal, human-in-the-loop system I designed and built to support my own job search for data roles.
 It uses an LLM (Claude) to screen job postings against a **verified profile**, draft tailored
 one-page CVs and recruiter messages, and pre-fill application forms. A human (me) reviews
 every output, and **every application is submitted manually**.
 
-> The example profile and sample files use a fictional person ("Jane Doe"). The prompts,
-> workflow and measurements come from my own use, with personal data removed; my name appears
-> only as author. No recruiter names or companies are published. The only results reported are the ones in
+> Everything here comes from my own use. The profile in `knowledge-base/` is the public version
+> of my real master profile; contact details, private notes and the companies I applied to are
+> not published. The only results reported are the ones in
 > [What has been measured](#what-has-been-measured).
 
 ## The problem
@@ -39,14 +41,14 @@ flowchart TB
 
 | Component | What it does | Where |
 |---|---|---|
-| Master profile | One Markdown file with every verified fact about my background and its source. It also has a list of **forbidden facts** (unproven numbers and claims) and **[TO CONFIRM]** facts that cannot be used yet. | [`knowledge-base/`](knowledge-base/) (example) |
+| Master profile | One Markdown file with every verified fact about my background and its source. It also has a list of **forbidden facts** (unproven numbers and claims) and **[TO CONFIRM]** facts that cannot be used yet. | [`knowledge-base/`](knowledge-base/) (public version) |
 | Project instructions | A fixed flow: read the posting → score fit (0–10 in the Claude project, 0–100 in the n8n workflow) with hard discard rules (years of experience, required stack, language, location) → ATS-friendly 1-page CV → recruiter message → likely interview questions. | [`prompts/`](prompts/) |
 | Rules to limit invented facts | Only master-profile facts. Pre-validated sentences per project. Automatic 1-page check. File metadata. | [`prompts/`](prompts/), [`src/`](src/) |
 | CV generator | Builds the CV from 3 base variants (Data Engineer / Analyst / Scientist) with `python-docx`, converts it to PDF with LibreOffice and checks the page count with `pypdf`. Rejects any fact not marked as verified in the master profile (CV generator only; drafts from the Claude project are not checked in code). | [`src/`](src/) |
 | Screening agent | Claude in Chrome goes through a LinkedIn results page **read-only** and returns a ranked shortlist. | [`prompts/job-screening-prompt.md`](prompts/job-screening-prompt.md) |
 | Form-filling agent | Claude in Chrome fills application forms, but **stops** at login/password, at CV upload and before submit, then shows a summary for approval. | [`prompts/form-filling-agent-prompt.md`](prompts/form-filling-agent-prompt.md) |
 | Tracking | One sheet per application plus an index, and a reusable answers sheet for common form questions. | [`tracking/`](tracking/) (templates) |
-| n8n prototype | Automated screening of job-alert emails (see below). | [`n8n/`](n8n/) |
+| n8n workflow | Daily automated screening of job-alert emails, in production since 19 Nov 2026 (see below). | [`n8n/`](n8n/) |
 
 ## Design decisions
 
@@ -64,64 +66,77 @@ flowchart TB
   forbidden actions instead of "be careful" instructions.
 - **Cheap before expensive** (n8n). Rule-based filtering runs before any LLM call.
 
-## n8n prototype: automated job screening
+## n8n workflow: automated job screening
 
 ![n8n workflow](assets/n8n-workflow.png)
 
-*The item counts on the canvas (e.g. "6 items" after the Claude node) are from the first test
-run, before the rule-based filter was added. That is why the filter's connections show no counts.*
+*Screenshot from an early test run (before the November changes); the current flow is in the
+diagram below and in [`n8n/README.md`](n8n/README.md).*
 
-**Status:** prototype. The screening part (rule-based filter and Claude evaluation) was tested
-manually; the approval branch and the three Google Sheets logging nodes were not. **Not active in production** (n8n Cloud, trial
-version). Details in [`n8n/README.md`](n8n/README.md).
+**Status:** active since 19 Nov 2026 (n8n Cloud). It runs every day at 08:00. Postings that
+score 60 or more arrive in my inbox with a tailored CV and cover letter; everything is logged
+in Google Sheets. I review each one and submit applications myself.
 
 ```mermaid
 flowchart TB
     subgraph A[" 1 · Collect and filter (no LLM cost) "]
         direction LR
-        T[Gmail trigger<br/>job-alert label] --> X[Extract job IDs<br/>JS] --> D[Deduplicate]
+        T[Gmail trigger<br/>job-alert label · daily 08:00] --> X[Extract job IDs<br/>JS] --> D[Deduplicate]
         D --> F[Fetch public<br/>job page] --> P[Build prompt<br/>cached fixed part]
         P --> R[Rule-based filter<br/>max 15/run]
     end
-    subgraph B[" 2 · Evaluate and approve "]
+    subgraph B[" 2 · Evaluate, notify, log "]
         direction LR
         C[Claude API<br/>JSON output] --> I[Parse response] --> S{score ≥ 60?}
-        S -- yes --> AP[Email approval<br/>send-and-wait · 3 days] --> Q{Approved?}
-        Q -- yes --> G1[(Sheets: approved)]
-        Q -- no --> G2[(Sheets: rejected)]
-        S -- no --> G3[(Sheets: low fit)]
+        S -- yes --> E[Email to me<br/>CV + cover letter + link] --> G1[(Sheets: to apply)]
+        S -- no --> G2[(Sheets: low fit<br/>or ERROR - review)]
     end
     A -- jobs that pass the filter --> B
+    ERR[Error workflow<br/>email alert] -.-> B
 ```
 
 Key choices: a free rule-based filter (seniority level, title, "3+ years") before the LLM;
-prompt caching for the fixed part (profile + rules; the run 1 cost below was measured without caching, and its effect has not been measured separately); structured JSON output (score 0–100, met
-requirements, gaps, CV, cover letter); and a human approval step on every candidate job.
+prompt caching for the fixed part (profile + rules); structured JSON output (score 0–100, met
+requirements, gaps, CV, cover letter); no waiting for approval inside the workflow, because I
+decide and apply myself; and failures that are visible instead of silent.
 
 ### What has been measured
 
-Two separate manual test runs:
-
-| Run | What was tested | Result |
+| Test | What was tested | Result |
 |---|---|---|
-| 1 | Claude evaluation, **before** the rule-based filter existed | 6 jobs were sent to the LLM and all 6 were rejected, matching my own assessment. All six were poor fits, so this run does not show how it scores a good fit. Cost: US$0.254 in total, ≈ **US$0.042 per job evaluated by Claude**. |
-| 2 | Rule-based filter, on its own (on the same six postings) | Discarded 5 of 6 jobs before any LLM call. |
+| Run 1 (Nov) | Claude evaluation, before the rule-based filter existed | 6 postings, all rejected, matching my own assessment. Cost: 60,130 input + 13,438 output tokens = US$0.254, ≈ **US$0.042 per posting**. Output was 53% of the cost. |
+| Run 2 (Nov) | Rule-based filter on the same six postings | Discarded 5 of 6 before any LLM call. |
+| 19 Nov | Real postings, full pipeline (Gmail → Claude → Sheets) | AI & Data Engineer Trainee: 55 · Junior Data Engineer (Azure & Databricks): 58 · Data Engineer (1–4 years required): 38. All logged correctly as low fit; no CV generated for the 38. |
+| 19 Nov | Notification email and inbox filter, with test data | Email arrives with score, gaps, link, CV and cover letter, and is filed in its own Gmail label. |
 
-These are small functional tests, not a benchmark. The full pipeline (filter + LLM + approval
-+ logging) has not been tested end to end.
+**Problems found in testing, and the fix for each**
+
+- **Truncated responses.** Adaptive thinking used 5,764 of the 6,000 output tokens, so the JSON
+  was cut off and a posting the model had scored 60 was logged as 0. Fix: thinking set to
+  `between_tools`, `max_tokens` raised to 8,000; afterwards `stop_reason` was `end_turn`.
+- **Silent failures.** An unreadable response used to look like a weak match. Now it is logged
+  as "ERROR – review manually", and a separate error workflow emails me if the run fails.
+- **Invented commitments.** A generated cover letter said I was ready to work on-site in
+  another city, which is not in my profile. Fix: an explicit rule. In the next test, the
+  location gap appeared in the summary for me to decide, not as a promise in the letter.
+- **Noise at the source.** Before any LLM cost: LinkedIn job alerts reduced from 9 to 6, the
+  "recommended jobs" feed turned off, and other LinkedIn emails moved out of the alert label.
+
+These are small functional tests, not a benchmark. No posting has scored 60+ in production yet,
+so the email with a real CV has only been tested with test data.
 
 ## Limitations
 
-- **Small scale, personal use.** The n8n workflow is not in production and has only been tested
+- **Small scale, personal use.** The n8n workflow went live on 19 Nov 2026 and has been tested
   on a handful of postings.
 - **Data source.** It reads public LinkedIn job pages without the official API. This may
   conflict with LinkedIn's terms; I use it only for personal, low-volume testing, and a
   production version would need an official source.
 - **Fragile node linking.** Nodes are matched by item index. A `jobId` key would be more robust.
-- **Silent failures.** If the API call fails or returns malformed JSON, the job gets a score of
-  0 and is logged as "low fit", so a technical error looks the same as a weak match.
-- **Untested logging.** None of the three Google Sheets logging nodes (approved / rejected /
-  low fit) has been tested; the approved and rejected nodes also have no sheet ID set.
+- **Deduplication before evaluation.** A posting is marked as seen before Claude answers; if a
+  run fails, that posting is not retried automatically (the error alert makes it visible).
+- **Alerts arrive in batches.** LinkedIn sends several unrelated postings per email; the
+  pre-filter and the 60-point threshold absorb the noise, but not all of it.
 - **The fit score is an LLM judgment**, not a calibrated metric.
 - **Agent guardrails are prompt-based.** The browser agents' stop points can't be enforced in
   code, which is why a human approves every step and submits manually.
@@ -143,13 +158,12 @@ Real errors I ran into while using it, and the rule each one led to:
 
 ## Next steps (n8n)
 
-- Test the three logging nodes and set the sheet ID in the approved/rejected ones
-- Daily trigger
-- Approval via Telegram
-- Cheaper model for screening
-- CV template in Google Docs
-- End-to-end test
+- Collect 2–4 weeks of production data (postings processed, share above 60, monthly cost,
+  applications sent) and report it here
+- Cheaper model for the first screening, Sonnet only for CVs and letters
+- Join nodes on `jobId` instead of item index
 - Handle closed postings
+- Move to self-hosted n8n (Docker) when the cloud trial ends
 
 ## Running the CV generator
 
@@ -167,12 +181,12 @@ python src/generate_cv.py \
 Expected output:
 
 ```text
-Profile: 35 verified items, 8 forbidden, 3 to confirm
+Profile: 35 verified items, 6 forbidden, 2 to confirm
 DOCX: output/CV_ExampleCorp_2026-11_data-analyst.docx
 PDF:  output/CV_ExampleCorp_2026-11_data-analyst.pdf (1 page)
 
 TO CONFIRM (not used):
-  - C-01: Final grade of the postgraduate thesis: waiting for the official transcript.
+  - C-01: English level to declare: certificate planned for December 2026.
   ...
 ```
 
@@ -180,7 +194,7 @@ If a variant uses a forbidden or unconfirmed fact, the script stops:
 
 ```text
 Variant rejected:
-  - X-01: FORBIDDEN fact ("Reduced quoting time by 30%" at Acme: ...)
+  - X-03: FORBIDDEN fact (Tableau: never used. ...)
   - C-02: still TO CONFIRM, cannot be used (...)
   - F-201: belongs to PRJ-01, not to EXP-01
 ```
@@ -192,8 +206,8 @@ skipped too).
 
 ```text
 ├── assets/                  n8n workflow screenshot
-├── knowledge-base/          example master profile (fictional Jane Doe)
-├── prompts/                 the real prompts, translated and anonymised
+├── knowledge-base/          public version of my master profile
+├── prompts/                 the real prompts, translated (contact details removed)
 ├── src/
 │   ├── generate_cv.py       CV generator with fact validation and 1-page check
 │   └── variants/            the 3 base CVs, as lists of fact IDs

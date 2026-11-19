@@ -6,8 +6,8 @@
 one-line summary of discards and the full description of each shortlisted job (to paste into
 the project in `project-system-prompt.md`).
 
-> Translated from Portuguese and anonymised. The profile summary was replaced with the fictional
-> "Jane Doe" profile. The rules, limits and forbidden actions are unchanged.
+> Translated from Portuguese. The profile summary is my own (public facts only). The rules,
+> limits and forbidden actions are unchanged.
 
 Design notes:
 - **Read-only by design.** The agent may click through the list and "see more", but the
@@ -32,14 +32,16 @@ by one:
 5. Skip jobs already marked "Applied" and duplicates.
 
 MY PROFILE (don't assume anything else):
-- BSc in Industrial Engineering (2018) + postgraduate diploma in Data Analytics (2026).
-- Data: 0 professional years; academic projects only. I know Python, SQL, PostgreSQL, ETL, data
-  quality, Power BI, Excel, Git, Docker. Coursework only, no practice: Spark, Kafka, NoSQL.
-  In progress: Airflow, Snowflake, dbt.
-- 6 years of business experience (sales reporting, quotes, customers; logistics operations).
+- BSc in Control & Automation Engineering (2019) + postgraduate programme in Big Data &
+  Decision Making (ISEP, 2026).
+- Data: 0 professional years; academic and personal projects only. I know Python, SQL,
+  PostgreSQL, ETL, data quality, Power BI, Excel, Git, Docker. Coursework only, no practice:
+  Spark, Kafka, NoSQL. In progress: Airflow, Snowflake, dbt.
+- 4+ years in an electrical engineering company (cost estimates, sales KPIs, proposals) and
+  experimental data analysis as a research fellow.
 - Portuguese native, English B2. No French, German or Spanish.
-- I live in Lisbon. Authorised to work in Portugal.
-- Interests: data, BI, process improvement, logistics and retail.
+- I live in Porto. Authorised to work in Portugal.
+- Interests: data engineering, BI, applied AI, engineering and energy.
 
 NOT WORTH IT if:
 - It asks for 3+ years of experience, or 1+ year of mandatory professional experience in the role.
@@ -51,7 +53,7 @@ NOT WORTH IT if:
   almost perfect fit.
 - It says it is "no longer accepting applications".
 
-WORTH IT if: it is junior/trainee/internship/graduate (or no years required), in Lisbon and
+WORTH IT if: it is junior/trainee/internship/graduate (or no years required), in Porto and
 surroundings or remote in Portugal, and I meet about 60% of the mandatory requirements.
 
 FORBIDDEN: applying, clicking "Apply"/"Easy Apply", saving jobs, sending messages or closing tabs.

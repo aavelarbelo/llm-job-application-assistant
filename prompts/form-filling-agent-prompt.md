@@ -6,8 +6,8 @@ corporate applicant-tracking portal.
 **Input:** an open job page. **Output:** a filled-in form that has **not** been submitted, plus
 a summary of every field for human review.
 
-> Translated from Portuguese and anonymised. Personal data, links, employers and dates are
-> placeholders or fictional "Jane Doe" data. The four rules and the consent rule are unchanged.
+> Translated from Portuguese. Contact details are placeholders; education and dates are my
+> own. The four rules and the consent rule are unchanged.
 
 Design notes:
 - **Hard stop points, not "be careful".** The agent stops at login/password, at CV upload and
@@ -35,9 +35,9 @@ DATA:
 - Name / Email / Phone / Location: [PERSONAL DATA]
 - Work authorisation in Portugal: Yes, no visa needed
 - LinkedIn / GitHub: [LINKS]
-- Education: Postgraduate Diploma in Data Analytics, Example Polytechnic Institute
-  (Oct 2025 to Jun 2026, average 16/20); BSc in Industrial Engineering (2014 to 2018);
-  if asked about a master's: MSc in Operations Research, Example University, NOT completed
+- Education: Postgraduate Programme in Big Data & Decision Making, ISEP
+  (Nov 2025 to Jun 2026, average 15/20); BSc in Control & Automation Engineering (2014 to 2019);
+  if asked about a master's: MSc in Computational Mechanics, FEUP, NOT completed
 - Languages: Portuguese (native); English (B2)
 - Most relevant experience: [EMPLOYERS AND DATES]
 - Availability: immediate · How did you hear about the job: LinkedIn

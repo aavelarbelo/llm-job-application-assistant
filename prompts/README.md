@@ -1,6 +1,6 @@
 # Prompts
 
-Translated and anonymised versions of the three prompts I use (originals in Portuguese).
+Translated versions of the three prompts I use (originals in Portuguese).
 
 | File | Used in | What it does |
 |---|---|---|
@@ -13,14 +13,13 @@ in [`../n8n/workflow_candidaturas_SANITIZADO.json`](../n8n/workflow_candidaturas
 
 ## What was changed for publication
 
-- **Personal data** (name, contacts, links): replaced with "Jane Doe" or `[PLACEHOLDERS]`.
-- **Institutions, employers and project names:** replaced with fictional ones.
-- **Career-specific facts** (degrees, years, grades, skills): replaced with the fictional
-  profile in [`../knowledge-base/master-profile.example.md`](../knowledge-base/master-profile.example.md).
-- **Forbidden claims:** the real list named specific unproven numbers from old CVs. Those are
-  replaced with Jane Doe equivalents, but the categories are the same: unproven percentages,
-  group totals presented as individual work, inflated job titles, tools only seen in coursework,
-  and empty self-praise.
+- **Contact details** (email, phone): removed or replaced with `[PLACEHOLDERS]`. My name,
+  institutions, employers and projects are real.
+- **Career-specific facts** (degrees, years, grades, skills): the ones the prompts rely on are
+  in the public profile, [`../knowledge-base/master-profile.example.md`](../knowledge-base/master-profile.example.md).
+- **Forbidden claims:** the private list names specific claims I removed from old CVs. Here they
+  are described by category: unproven percentages, group totals presented as individual work,
+  inflated job titles, tools only seen in coursework, and empty self-praise.
 - **Language:** translated from Portuguese.
 
 Not changed: the flow, the decision rules (score thresholds, discard rules, 60% criterion),

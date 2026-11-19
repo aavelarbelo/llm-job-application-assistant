@@ -1,8 +1,8 @@
 # Lessons learned: real errors and the rules that prevent them
 
-Each case below happened while I was using the system for real applications. Where a detail
-would expose my personal data, it is described in general terms or replaced with the fictional
-"Jane Doe" equivalent from
+Each case below happened to me while I was using the system for real applications. Where a
+detail belongs in my private notes (for example, the exact claims removed from old CVs), it is
+described in general terms. My public profile is in
 [`../knowledge-base/master-profile.example.md`](../knowledge-base/master-profile.example.md).
 
 The common thread: **wrong or unsupported information gets reused.** The fix is never "ask the
@@ -27,7 +27,7 @@ there is no source for it, it is a liability, not an asset.
 - Every verified fact needs a `source`; the CV generator rejects verified facts without one.
 - Unproven claims are listed in a **FORBIDDEN** section, by name, so the model is told what it
   must *not* say as well as what to say.
-- Forbidden items carry text patterns (Jane Doe example: `30%`), and `src/generate_cv.py` scans
+- Forbidden items carry text patterns (e.g. the exact unproven percentage), and `src/generate_cv.py` scans
   every generated CV for them as a final check.
 
 ## 2. An unfinished master's recorded as a degree in my own public profile
@@ -43,8 +43,8 @@ don't have is the kind of error that ends a recruitment process.
 
 **What I changed.** I fixed the source, not the model output:
 - The public profile now shows the programme as not completed.
-- In the master profile, the education entry states its status in the title itself (Jane Doe:
-  *"MSc in Operations Research (not completed)"*), plus a separate fact: *"Programme not
+- In the master profile, the education entry states its status in the title itself
+  (*"MSc in Computational Mechanics (not completed)"*), plus a separate fact: *"Programme not
   completed; no degree awarded."*
 - "A completed master's degree" is in the FORBIDDEN list.
 - The form-filling prompt has an explicit answer for "Do you have a master's?": the programme
