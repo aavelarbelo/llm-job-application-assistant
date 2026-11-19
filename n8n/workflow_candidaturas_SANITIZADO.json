@@ -6,7 +6,7 @@
         "pollTimes": {
           "item": [
             {
-              "mode": "everyHour"
+              "hour": 8
             }
           ]
         },
@@ -16,26 +16,32 @@
         },
         "options": {}
       },
-      "id": "4eb95393-76e9-43a1-b5db-a47299655a9b",
+      "id": "1dc3c279-a38e-4c5a-bb3a-db54f475038d",
       "name": "Gmail - alertas LinkedIn",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.2,
       "position": [
-        0,
-        0
-      ]
+        -768,
+        -1072
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GMAILOAUTH2"
+        }
+      }
     },
     {
       "parameters": {
         "jsCode": "\n// Extrai IDs de vagas do email de alerta do LinkedIn (um email traz várias vagas)\nconst out = [];\nfor (const item of $input.all()) {\n  const html = item.json.html || item.json.textHtml || item.json.text || '';\n  const ids = [...new Set([...html.matchAll(/jobs\\/view\\/(\\d{6,})/g)].map(m => m[1]))];\n  for (const id of ids) {\n    out.push({ json: { jobId: id, link: `https://www.linkedin.com/jobs/view/${id}`, emailSubject: item.json.subject } });\n  }\n}\nreturn out;\n"
       },
-      "id": "f9ca5620-72e9-4874-81c4-287dc3d89e25",
+      "id": "5a440c92-2a53-412a-ac2c-d7f60cb4a853",
       "name": "Extrair vagas do email",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
-        0
+        -544,
+        -1072
       ]
     },
     {
@@ -44,67 +50,54 @@
         "dedupeValue": "={{ $json.jobId }}",
         "options": {}
       },
-      "id": "e8e8c813-2223-4269-a132-cad25bc2fcff",
+      "id": "4f8fe8b1-d7f9-40cc-8fc4-c604607bb1f6",
       "name": "Ignorar vagas já vistas",
       "type": "n8n-nodes-base.removeDuplicates",
       "typeVersion": 2,
       "position": [
-        440,
-        0
+        -320,
+        -1072
       ]
     },
     {
       "parameters": {
         "url": "=https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{{ $json.jobId }}",
         "options": {
-          "response": {
-            "response": {
-              "responseFormat": "text"
-            }
-          },
           "batching": {
             "batch": {
               "batchSize": 1,
               "batchInterval": 3000
             }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
           }
         }
       },
-      "id": "a6377ddc-f64a-47a7-a4b0-4b2739ccaae3",
+      "id": "59c858c1-6643-4d3c-8cbc-de9ea047bd0b",
       "name": "Buscar descrição da vaga",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        660,
-        0
+        -96,
+        -1072
       ],
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "// Prepara o pedido ao Claude com o Perfil-mestre v6 e as regras do projeto\n// v2: prompt caching (a parte fixa vai em 'system' e é guardada em cache) + só o bloco da descrição da vaga (sem menus/rodapés do LinkedIn), completo\nconst REGRAS = `[REGRAS REMOVIDAS: regras de factos, estilo da carta e proibições do projeto]`;\n\nconst PERFIL = `[PERFIL-MESTRE REMOVIDO: factos pessoais verificados, única fonte para CV e carta]`;\n\n// Parte FIXA (igual em todas as vagas): fica em cache e, a partir da 2.ª vaga, custa ~10% do preço normal\nconst SISTEMA = `És o assistente de candidaturas da Andressa para Data/BI/Analytics.\n\n${REGRAS}\n\n=== PERFIL-MESTRE (única fonte de factos) ===\n${PERFIL}`;\n\nconst vagas = $('Ignorar vagas já vistas').all();\nconst out = [];\n$input.all().forEach((item, i) => {\n  const html = item.json.data || '';\n  const pick = re => (html.match(re) || [, ''])[1].replace(/<[^>]+>/g, '').trim();\n  const titulo = pick(/<h2[^>]*top-card-layout__title[^>]*>([\\s\\S]*?)<\\/h2>/);\n  const empresa = pick(/topcard__org-name-link[^>]*>([\\s\\S]*?)<\\/a>/);\n  // Só o bloco escrito pelo recrutador; se não o encontrar, usa a página toda\n  const bloco = (html.match(/<div[^>]*show-more-less-html__markup[^>]*>([\\s\\S]*?)<\\/div>\\s*<button/) ||\n                 html.match(/<div[^>]*description__text[^>]*>([\\s\\S]*?)<\\/section>/) || [, html])[1];\n  const criterios = (html.match(/<ul[^>]*description__job-criteria-list[^>]*>([\\s\\S]*?)<\\/ul>/) || [, ''])[1];\n  const descricao = (bloco + '\\n' + criterios)\n    .replace(/<script[\\s\\S]*?<\\/script>|<style[\\s\\S]*?<\\/style>/g, '')\n    .replace(/<br\\s*\\/?>|<\\/(p|li|div|h\\d)>/g, '\\n')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&#39;/g, \"'\").replace(/&quot;/g, '\"')\n    .replace(/[ \\t]+/g, ' ').replace(/\\n\\s*\\n+/g, '\\n').trim()\n    .slice(0, 20000); // limite de segurança, não corta vagas normais\n\n  const vagaTexto = `=== VAGA: ${titulo} @ ${empresa} ===\n${descricao}\n\nTAREFAS\n1. Avalia o fit de 0 a 100 com realismo (60 corresponde a cumprir cerca de 60% dos obrigatórios).\n2. Lista os requisitos que ela cumpre (com a prova) e as lacunas.\n3. Se score >= 60, escreve o CV adaptado (texto simples, pronto a copiar) e a carta.\n4. Em para_confirmar, lista o que ficou de fora por estar [POR CONFIRMAR] e seria útil nesta vaga.\n\nResponde APENAS com JSON válido, sem texto antes ou depois:\n{\"score\":0,\"recomendacao\":\"Candidatar | Candidatar com ressalvas | Não vale a pena\",\"resumo\":\"\",\"cumpre\":[],\"lacunas\":[],\"palavras_chave\":[],\"lingua\":\"PT ou EN\",\"cv\":\"\",\"carta\":\"\",\"para_confirmar\":[]}`;\n\n  const v = vagas[i]?.json || {};\n  out.push({ json: {\n    jobId: v.jobId, link: v.link, titulo, empresa,\n    body: {\n      model: 'claude-sonnet-5-5',\n      max_tokens: 6000,\n      system: [{ type: 'text', text: SISTEMA, cache_control: { type: 'ephemeral' } }],\n      messages: [{ role: 'user', content: vagaTexto }]\n    }\n  }});\n});\nreturn out;\n"
+        "jsCode": "// Prepara o pedido ao Claude com o Perfil-mestre v6 e as regras do projeto\n// v2: prompt caching (a parte fixa vai em 'system' e é guardada em cache) + só o bloco da descrição da vaga (sem menus/rodapés do LinkedIn), completo\nconst REGRAS = `[REMOVED: project rules - see prompts/project-system-prompt.md for the public version]`;\n\nconst PERFIL = `[REMOVED: private master profile - see knowledge-base/master-profile.example.md for the public version]`;\n\n// Parte FIXA (igual em todas as vagas): fica em cache e, a partir da 2.ª vaga, custa ~10% do preço normal\nconst SISTEMA = `És o assistente de candidaturas da Andressa para Data/BI/Analytics.\n\n${REGRAS}\n\n=== PERFIL-MESTRE (única fonte de factos) ===\n${PERFIL}`;\n\nconst vagas = $('Ignorar vagas já vistas').all();\nconst out = [];\n$input.all().forEach((item, i) => {\n  const html = item.json.data || '';\n  const pick = re => (html.match(re) || [, ''])[1].replace(/<[^>]+>/g, '').trim();\n  const titulo = pick(/<h2[^>]*top-card-layout__title[^>]*>([\\s\\S]*?)<\\/h2>/);\n  const empresa = pick(/topcard__org-name-link[^>]*>([\\s\\S]*?)<\\/a>/);\n  // Só o bloco escrito pelo recrutador; se não o encontrar, usa a página toda\n  const bloco = (html.match(/<div[^>]*show-more-less-html__markup[^>]*>([\\s\\S]*?)<\\/div>\\s*<button/) ||\n                 html.match(/<div[^>]*description__text[^>]*>([\\s\\S]*?)<\\/section>/) || [, html])[1];\n  const criterios = (html.match(/<ul[^>]*description__job-criteria-list[^>]*>([\\s\\S]*?)<\\/ul>/) || [, ''])[1];\n  const descricao = (bloco + '\\n' + criterios)\n    .replace(/<script[\\s\\S]*?<\\/script>|<style[\\s\\S]*?<\\/style>/g, '')\n    .replace(/<br\\s*\\/?>|<\\/(p|li|div|h\\d)>/g, '\\n')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/&#39;/g, \"'\").replace(/&quot;/g, '\"')\n    .replace(/[ \\t]+/g, ' ').replace(/\\n\\s*\\n+/g, '\\n').trim()\n    .slice(0, 20000); // limite de segurança, não corta vagas normais\n\n  const vagaTexto = `=== VAGA: ${titulo} @ ${empresa} ===\n${descricao}\n\nTAREFAS\n1. Avalia o fit de 0 a 100 com realismo (60 corresponde a cumprir cerca de 60% dos obrigatórios).\n2. Lista os requisitos que ela cumpre (com a prova) e as lacunas.\n3. Se score >= 60, escreve o CV adaptado (texto simples, pronto a copiar) e a carta.\n4. Em para_confirmar, lista o que ficou de fora por estar [POR CONFIRMAR] e seria útil nesta vaga.\n\nResponde APENAS com JSON válido, sem texto antes ou depois:\n{\"score\":0,\"recomendacao\":\"Candidatar | Candidatar com ressalvas | Não vale a pena\",\"resumo\":\"\",\"cumpre\":[],\"lacunas\":[],\"palavras_chave\":[],\"lingua\":\"PT ou EN\",\"cv\":\"\",\"carta\":\"\",\"para_confirmar\":[]}`;\n\n  const v = vagas[i]?.json || {};\n  out.push({ json: {\n    jobId: v.jobId, link: v.link, titulo, empresa,\n    body: {\n      model: 'claude-sonnet-5-5',\n      max_tokens: 8000, thinking: { type: 'between_tools' },\n      system: [{ type: 'text', text: SISTEMA, cache_control: { type: 'ephemeral' } }],\n      messages: [{ role: 'user', content: vagaTexto }]\n    }\n  }});\n});\nreturn out;\n"
       },
-      "id": "781a1dac-3b87-4e36-8742-89259867a9a3",
+      "id": "96090a85-18e3-44bd-b3cb-f7a3a2a72a01",
       "name": "Preparar prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        880,
-        0
+        128,
+        -1072
       ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// FILTRO GRATUITO: corre antes do Claude e descarta vagas fora do alvo (não gasta créditos)\nconst MAX_POR_EXECUCAO = 15; // teto de vagas enviadas ao Claude por execução\n\nconst NIVEL_BLOQUEADO = /mid-senior|pleno|s[eê]nior|director|diretor|executive|executivo/i;\nconst TITULO_BLOQUEADO = /\\b(senior|s[eéê]nior|sr\\.?|lead|principal|manager|gestor|head|staff|architect|arquiteto)\\b/i;\nconst ANOS_BLOQUEADO = /\\b([3-9]|1\\d)\\s*\\+\\s*(years|anos)|(at least|minimum( of)?|m[ií]nimo( de)?|pelo menos|mais de)\\s*([3-9]|1\\d)\\s*(years|anos)/i;\n\nconst htmls = $('Buscar descrição da vaga').all();\nconst passam = [];\n\n$input.all().forEach((item, i) => {\n  const html = htmls[i]?.json?.data || '';\n  const nivelMatch = html.match(/description__job-criteria-text[^>]*>([\\s\\S]*?)<\\/span>/);\n  const nivel = nivelMatch ? nivelMatch[1].replace(/<[^>]+>/g, '').trim() : '';\n  const texto = html.replace(/<[^>]+>/g, ' ');\n  const titulo = item.json.titulo || '';\n\n  let motivo = '';\n  if (NIVEL_BLOQUEADO.test(nivel)) motivo = `nível: ${nivel}`;\n  else if (TITULO_BLOQUEADO.test(titulo)) motivo = `título: ${titulo}`;\n  else if (ANOS_BLOQUEADO.test(texto)) motivo = `anos: ${(texto.match(ANOS_BLOQUEADO) || [''])[0]}`;\n\n  if (motivo) console.log(`Descartada (${motivo}) → ${titulo} @ ${item.json.empresa}`);\n  else passam.push({ json: { ...item.json, nivel } });\n});\n\nreturn passam.slice(0, MAX_POR_EXECUCAO);\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1100,
-        0
-      ],
-      "id": "filtro-gratuito",
-      "name": "Filtro gratuito"
     },
     {
       "parameters": {
@@ -137,26 +130,32 @@
           }
         }
       },
-      "id": "5f0ea409-8ec1-407d-8c44-ba1b99754680",
+      "id": "2be60e83-e141-4c34-80a0-819fd6cd8e50",
       "name": "Claude - avaliar e adaptar",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1320,
-        0
-      ]
+        576,
+        -1072
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_HTTPHEADERAUTH"
+        }
+      }
     },
     {
       "parameters": {
         "jsCode": "\nconst out = [];\nconst vagas = $('Filtro gratuito').all();\n$input.all().forEach((item, i) => {\n  const txt = (item.json.content || []).map(c => c.text || '').join('');\n  let r = {};\n  try { r = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1)); }\n  catch (e) { r = { score: 0, resumo: 'Erro a ler resposta do Claude', lacunas: [], cumpre: [] }; }\n  const v = vagas[i].json;\n  out.push({ json: {\n    jobId: v.jobId, link: v.link, titulo: v.titulo, empresa: v.empresa,\n    score: r.score, resumo: r.resumo,\n    cumpre: (r.cumpre || []).join(' · '), lacunas: (r.lacunas || []).join(' · '),\n    cv: r.cv || '', carta: r.carta || '', data: new Date().toISOString().slice(0, 10)\n  }});\n});\nreturn out;\n"
       },
-      "id": "dcf1e10c-d99b-4c87-af15-353decef3cd1",
+      "id": "082f2478-e0b4-483f-b27a-246914dca7b4",
       "name": "Interpretar resposta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1540,
-        0
+        800,
+        -1072
       ]
     },
     {
@@ -164,7 +163,8 @@
         "conditions": {
           "options": {
             "caseSensitive": true,
-            "typeValidation": "loose",
+            "leftValue": "",
+            "typeValidation": "strict",
             "version": 2
           },
           "conditions": [
@@ -182,193 +182,272 @@
         },
         "options": {}
       },
-      "id": "0bf05e8c-4211-43d1-bd51-d6cfdc323d12",
+      "id": "7513e68d-2331-40be-9010-699ede15d3fa",
       "name": "Score >= 60?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        1760,
-        0
+        1024,
+        -1072
       ]
     },
     {
       "parameters": {
-        "operation": "sendAndWait",
-        "sendTo": "O_TEU_EMAIL",
-        "subject": "=[Aprovar?] {{ $json.titulo }} — {{ $json.empresa }} ({{ $json.score }}/100)",
-        "message": "={{ `<h2>${$json.titulo} — ${$json.empresa}</h2>\n<p><b>Score de fit:</b> ${$json.score}/100<br><b>Resumo:</b> ${$json.resumo}</p>\n<p><b>Cumpre:</b> ${$json.cumpre}<br><b>Lacunas:</b> ${$json.lacunas}</p>\n<p><a href=\"${$json.link}\">Abrir vaga no LinkedIn</a></p><hr>\n<h3>CV adaptado</h3><pre style=\"white-space:pre-wrap;font-family:inherit\">${$json.cv}</pre><hr>\n<h3>Carta de motivação</h3><pre style=\"white-space:pre-wrap;font-family:inherit\">${$json.carta}</pre>` }}",
-        "approvalOptions": {
-          "values": {
-            "approvalType": "double",
-            "approveLabel": "Aprovar candidatura",
-            "disapproveLabel": "Rejeitar"
-          }
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
         },
-        "options": {
-          "limitWaitTime": {
-            "values": {
-              "limitType": "afterTimeInterval",
-              "resumeAmount": 3,
-              "resumeUnit": "days"
-            }
-          }
-        }
-      },
-      "id": "afa48fdb-eb1a-409d-862c-69770ab1c066",
-      "name": "Pedir aprovação (Gmail)",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [
-        2000,
-        -120
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "typeValidation": "loose",
-            "version": 2
+        "sheetName": {
+          "__rl": true,
+          "value": "Candidaturas",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Data": "={{ $('Interpretar resposta').item.json.data }}",
+            "Empresa": "={{ $('Interpretar resposta').item.json.empresa }}",
+            "Vaga": "={{ $('Interpretar resposta').item.json.titulo }}",
+            "Score": "={{ $('Interpretar resposta').item.json.score }}",
+            "Lacunas": "=• {{ $('Interpretar resposta').item.json.lacunas }}",
+            "Link": "={{ $('Interpretar resposta').item.json.link }}",
+            "Estado": "={{ String($('Interpretar resposta').item.json.resumo || '').startsWith('Erro') ? 'ERRO - rever vaga manualmente' : 'Descartada (fit baixo)' }}"
           },
-          "conditions": [
+          "matchingColumns": [],
+          "schema": [
             {
-              "id": "23cd757e-d2b9-4b1a-9a54-308ff4f4305e",
-              "leftValue": "={{ $json.data.approved }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
+              "id": "Data",
+              "displayName": "Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Empresa",
+              "displayName": "Empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vaga",
+              "displayName": "Vaga",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lacunas",
+              "displayName": "Lacunas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Link",
+              "displayName": "Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
             }
           ],
-          "combinator": "and"
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
         "options": {}
       },
-      "id": "30234040-8c33-4c6a-aede-aad6e37ebd62",
-      "name": "Aprovou?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2220,
-        -120
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "ID_DA_FOLHA_GOOGLE_SHEETS",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "Candidaturas",
-          "mode": "name"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Data": "={{ $('Interpretar resposta').item.json.data }}",
-            "Empresa": "={{ $('Interpretar resposta').item.json.empresa }}",
-            "Vaga": "={{ $('Interpretar resposta').item.json.titulo }}",
-            "Score": "={{ $('Interpretar resposta').item.json.score }}",
-            "Lacunas": "={{ $('Interpretar resposta').item.json.lacunas }}",
-            "Link": "={{ $('Interpretar resposta').item.json.link }}",
-            "Estado": "Aprovada - submeter no LinkedIn"
-          },
-          "matchingColumns": [],
-          "schema": []
-        },
-        "options": {}
-      },
-      "id": "3679d44e-adae-4a1d-b549-f3e6586339cd",
-      "name": "Registar: aprovada",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        2440,
-        -220
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "ID_DA_FOLHA_GOOGLE_SHEETS",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "Candidaturas",
-          "mode": "name"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Data": "={{ $('Interpretar resposta').item.json.data }}",
-            "Empresa": "={{ $('Interpretar resposta').item.json.empresa }}",
-            "Vaga": "={{ $('Interpretar resposta').item.json.titulo }}",
-            "Score": "={{ $('Interpretar resposta').item.json.score }}",
-            "Lacunas": "={{ $('Interpretar resposta').item.json.lacunas }}",
-            "Link": "={{ $('Interpretar resposta').item.json.link }}",
-            "Estado": "Rejeitada pela Andressa"
-          },
-          "matchingColumns": [],
-          "schema": []
-        },
-        "options": {}
-      },
-      "id": "a6263607-539c-4049-a278-47abc54118df",
-      "name": "Registar: rejeitada por ti",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [
-        2440,
-        -20
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "ID_DA_FOLHA_GOOGLE_SHEETS",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "Candidaturas",
-          "mode": "name"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Data": "={{ $('Interpretar resposta').item.json.data }}",
-            "Empresa": "={{ $('Interpretar resposta').item.json.empresa }}",
-            "Vaga": "={{ $('Interpretar resposta').item.json.titulo }}",
-            "Score": "={{ $('Interpretar resposta').item.json.score }}",
-            "Lacunas": "={{ $('Interpretar resposta').item.json.lacunas }}",
-            "Link": "={{ $('Interpretar resposta').item.json.link }}",
-            "Estado": "Descartada (fit baixo)"
-          },
-          "matchingColumns": [],
-          "schema": []
-        },
-        "options": {}
-      },
-      "id": "2ec408e4-bd59-4949-9800-a982280353f4",
+      "id": "26c0cf19-bd7d-4cb6-b6af-8aa83e78a433",
       "name": "Registar: fit baixo",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        2000,
-        120
-      ]
+        1248,
+        -976
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLESHEETSOAUTH2API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// FILTRO GRATUITO: corre antes do Claude e descarta vagas fora do alvo (não gasta créditos)\nconst MAX_POR_EXECUCAO = 15; // teto de vagas enviadas ao Claude por execução\n\nconst NIVEL_BLOQUEADO = /mid-senior|pleno|s[eê]nior|director|diretor|executive|executivo/i;\nconst TITULO_BLOQUEADO = /\\b(senior|s[eéê]nior|sr\\.?|lead|principal|manager|gestor|head|staff|architect|arquiteto)\\b/i;\nconst ANOS_BLOQUEADO = /\\b([3-9]|1\\d)\\s*\\+\\s*(years|anos)|(at least|minimum( of)?|m[ií]nimo( de)?|pelo menos|mais de)\\s*([3-9]|1\\d)\\s*(years|anos)/i;\n\nconst htmls = $('Buscar descrição da vaga').all();\nconst passam = [];\n\n$input.all().forEach((item, i) => {\n  const html = htmls[i]?.json?.data || '';\n  const nivelMatch = html.match(/description__job-criteria-text[^>]*>([\\s\\S]*?)<\\/span>/);\n  const nivel = nivelMatch ? nivelMatch[1].replace(/<[^>]+>/g, '').trim() : '';\n  const texto = html.replace(/<[^>]+>/g, ' ');\n  const titulo = item.json.titulo || '';\n\n  let motivo = '';\n  if (NIVEL_BLOQUEADO.test(nivel)) motivo = `nível: ${nivel}`;\n  else if (TITULO_BLOQUEADO.test(titulo)) motivo = `título: ${titulo}`;\n  else if (ANOS_BLOQUEADO.test(texto)) motivo = `anos: ${(texto.match(ANOS_BLOQUEADO) || [''])[0]}`;\n\n  if (motivo) console.log(`Descartada (${motivo}) → ${titulo} @ ${item.json.empresa}`);\n  else passam.push({ json: { ...item.json, nivel } });\n});\n\nreturn passam.slice(0, MAX_POR_EXECUCAO);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -1072
+      ],
+      "id": "123e189e-73d4-416f-a82c-6b3d0d5a06a5",
+      "name": "Filtro gratuito"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@example.com",
+        "subject": "=[Vaga Claude] {{ $json.titulo }} - {{ $json.empresa }} ({{ $json.score }}/100)",
+        "emailType": "text",
+        "message": "={{ [\"Score: \" + $json.score + \"/100\", \"Resumo: \" + $json.resumo, \"Lacunas: \" + $json.lacunas, \"Link da vaga: \" + $json.link, \"\", \"Proximo passo: abre o link, confirma que a vaga ainda esta aberta e candidata-te tu. Depois muda o Estado na folha Candidaturas 2026.\", \"\", \"==================== CV ====================\", \"\", $json.cv, \"\", \"==================== CARTA ====================\", \"\", $json.carta].join(\"\\n\") }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        -1168
+      ],
+      "id": "2d141a56-3fc7-49fb-a266-5382e89673c7",
+      "name": "Enviar vaga por email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GMAILOAUTH2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Candidaturas",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Data": "={{ $('Interpretar resposta').item.json.data }}",
+            "Empresa": "={{ $('Interpretar resposta').item.json.empresa }}",
+            "Vaga": "={{ $('Interpretar resposta').item.json.titulo }}",
+            "Score": "={{ $('Interpretar resposta').item.json.score }}",
+            "Lacunas": "=• {{ $('Interpretar resposta').item.json.lacunas }}",
+            "Link": "={{ $('Interpretar resposta').item.json.link }}",
+            "Estado": "Para candidatar"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Data",
+              "displayName": "Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Empresa",
+              "displayName": "Empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vaga",
+              "displayName": "Vaga",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Lacunas",
+              "displayName": "Lacunas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Link",
+              "displayName": "Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "71e0eca3-258b-44c0-a38d-46dd96df4bc1",
+      "name": "Registar: para candidatar",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1472,
+        -1168
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLESHEETSOAUTH2API"
+        }
+      }
     }
   ],
   "connections": {
@@ -453,7 +532,7 @@
       "main": [
         [
           {
-            "node": "Pedir aprovação (Gmail)",
+            "node": "Enviar vaga por email",
             "type": "main",
             "index": 0
           }
@@ -461,35 +540,6 @@
         [
           {
             "node": "Registar: fit baixo",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Pedir aprovação (Gmail)": {
-      "main": [
-        [
-          {
-            "node": "Aprovou?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Aprovou?": {
-      "main": [
-        [
-          {
-            "node": "Registar: aprovada",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Registar: rejeitada por ti",
             "type": "main",
             "index": 0
           }
@@ -506,10 +556,28 @@
           }
         ]
       ]
+    },
+    "Enviar vaga por email": {
+      "main": [
+        [
+          {
+            "node": "Registar: para candidatar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registar: para candidatar": {
+      "main": [
+        []
+      ]
     }
   },
+  "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "pinData": {}
+  "nodeGroups": [],
+  "tags": []
 }
