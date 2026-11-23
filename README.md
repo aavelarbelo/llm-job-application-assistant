@@ -122,13 +122,45 @@ decide and apply myself; and failures that are visible instead of silent.
 - **Noise at the source.** Before any LLM cost: LinkedIn job alerts reduced from 9 to 6, the
   "recommended jobs" feed turned off, and other LinkedIn emails moved out of the alert label.
 
-These are small functional tests, not a benchmark. No posting has scored 60+ in production yet,
-so the email with a real CV has only been tested with test data.
+These are small functional tests, not a benchmark.
+
+### First days in production (19–22 Nov 2026)
+
+Data from the Google Sheets log, the notification emails and the error alerts. Company names
+are left out on purpose.
+
+| Day | What happened |
+|---|---|
+| 19 Nov | Go-live with 3 real postings (scores 55, 58, 38; see above). |
+| 20 Nov | No posting reached the log. |
+| 21 Nov | 2 postings evaluated. A Data Engineering Associate role asking for 3–6 years and Azure scored **28** and was logged as low fit. The second posting came back with no title, no company and score 0, and was also logged as low fit (bug 2 below). |
+| 22 Nov | 2 postings scored 60+ and arrived by email with a tailored CV and cover letter: a junior data analyst internship at a bank (**72**, gaps: financial sector, Lisbon) and a junior data governance role in the Porto area (**62**, gaps: governance tooling, "excellent" English). Then the run failed (bugs 1 and 3). |
+
+**In numbers:** 7 distinct postings reached Claude in 4 days (9 API calls because of the
+duplicate), 2 of them (29%) scored 60+, ≈ US$0.04 per call. One application per posting is still
+my decision: the 72 is in Lisbon, which the workflow flagged in the summary instead of the letter.
+
+**Bugs that only showed up with real data**
+
+1. **Duplicate inside one run.** The same internship appeared in 3 different alert emails and
+   was evaluated and emailed 3 times. The "already seen" check only compares against previous
+   runs, not items within the same run. Fix: deduplicate by LinkedIn job ID before the check.
+2. **Blank posting logged as low fit.** When the posting page returns nothing, Claude scores
+   an empty description 0, which looks like a real rejection. Fix: no title or no description →
+   "ERROR – review manually", without calling Claude.
+3. **Permission error on the 60+ branch.** Logging the two 60+ postings failed with
+   `403 Forbidden` from Google Sheets. It was the first time that branch ran on real data (all
+   earlier real tests were below 60). The error workflow sent the alert within seconds, so
+   nothing was lost silently, but the two rows are missing from the log. Fix: reconnect the
+   Google Sheets credential on that node and test the branch with a real 60+ item.
+
+Lesson: testing every branch with test data is not the same as running it on real data. The
+error alert paid for itself on day 4.
 
 ## Limitations
 
-- **Small scale, personal use.** The n8n workflow went live on 19 Nov 2026 and has been tested
-  on a handful of postings.
+- **Small scale, personal use.** The n8n workflow went live on 19 Nov 2026; after 4 days it has
+  evaluated 7 distinct postings (see "First days in production").
 - **Data source.** It reads public LinkedIn job pages without the official API. This may
   conflict with LinkedIn's terms; I use it only for personal, low-volume testing, and a
   production version would need an official source.
@@ -158,6 +190,8 @@ Real errors I ran into while using it, and the rule each one led to:
 
 ## Next steps (n8n)
 
+- Fix the 3 bugs found in the first days (duplicate within a run, blank postings, Sheets
+  permission on the 60+ branch)
 - Collect 2–4 weeks of production data (postings processed, share above 60, monthly cost,
   applications sent) and report it here
 - Cheaper model for the first screening, Sonnet only for CVs and letters
